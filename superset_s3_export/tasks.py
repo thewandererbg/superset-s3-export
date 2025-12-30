@@ -184,7 +184,7 @@ def _stream_to_s3(
 
     try:
         # Execute query and stream results
-        with database.get_sqla_engine().connect() as connection:  # type: ignore
+        with database.get_sqla_engine() as engine, engine.connect() as connection:  # type: ignore
             result = connection.execute(sql_query)
 
             # Get column names
