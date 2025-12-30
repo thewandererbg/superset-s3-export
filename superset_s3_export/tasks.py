@@ -6,10 +6,11 @@ import csv
 import io
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Union
 
 import boto3
 from celery import Task
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from superset import db
 from superset.connectors.sqla.models import SqlaTable
 from superset.extensions import celery_app
@@ -53,97 +54,91 @@ def process_export(
         dict: Job result with status and metadata
     """
 
-    # CREATE FLASK APP CONTEXT - ADD THIS!
-    from superset import create_app
+    from superset import db
 
-    app = create_app()
+    from .email import send_export_email
+    from .models import ExportJob, ExportStatus
 
-    with app.app_context():  # ← Wrap everything in app context
-        from superset import db
+    session = db.session
+    job = session.query(ExportJob).filter_by(id=job_id).first()  # type: ignore
 
-        from .email import send_export_email
-        from .models import ExportJob, ExportStatus
+    if not job:
+        logger.error(f"Job {job_id} not found")
+        return {"status": "failed", "error": "Job not found"}
 
-        session: Session = db.session()
-        job = session.query(ExportJob).filter_by(id=job_id).first()
+    try:
+        # Update status to processing
+        job.status = ExportStatus.PROCESSING
+        job.retry_count = self.request.retries
+        session.commit()  # type: ignore
 
-        if not job:
-            logger.error(f"Job {job_id} not found")
-            return {"status": "failed", "error": "Job not found"}
+        logger.info(f"Processing export job {job_id} for user {user_id}")
 
+        # Step 1: Get datasource with RLS context
+        datasource = _get_datasource(datasource_id, datasource_type)
+        if not datasource:
+            raise ValueError(f"Datasource {datasource_id} not found")
+
+        # Step 2: Execute query with RLS (Superset handles this automatically)
+        database: Database = datasource.database
+        rows_processed, file_size = _stream_to_s3(
+            database=database,
+            sql_query=sql_query,
+            job=job,
+            config=config,
+            session=session,
+        )
+
+        # Step 3: Generate pre-signed URL
+        download_url = _generate_presigned_url(
+            s3_key=job.s3_key,
+            config=config,
+            expiry_hours=config.get("EXPIRY_HOURS", 24),
+        )
+
+        # Step 4: Update job as completed
+        job.status = ExportStatus.COMPLETED
+        job.download_url = download_url
+        job.row_count = rows_processed
+        job.file_size = file_size
+        job.completed_at = datetime.now(timezone.utc)
+        job.expires_at = datetime.now(timezone.utc) + timedelta(
+            hours=config.get("EXPIRY_HOURS", 24)
+        )
+        session.commit()  # type: ignore
+
+        # Step 5: Send email notification
+        send_export_email(job, config)
+
+        logger.info(f"Export job {job_id} completed: {rows_processed} rows, {file_size} bytes")
+
+        return {
+            "status": "completed",
+            "job_id": str(job_id),
+            "row_count": rows_processed,
+            "file_size": file_size,
+        }
+
+    except Exception as e:
+        logger.exception(f"Export job {job_id} failed: {str(e)}")
+
+        # Update job as failed
+        job.status = ExportStatus.FAILED
+        job.error_message = str(e)[:5000]  # Truncate long errors
+        job.completed_at = datetime.now(timezone.utc)
+        session.commit()  # type: ignore
+
+        # Send failure email
         try:
-            # Update status to processing
-            job.status = ExportStatus.PROCESSING
-            job.retry_count = self.request.retries
-            session.commit()
-
-            logger.info(f"Processing export job {job_id} for user {user_id}")
-
-            # Step 1: Get datasource with RLS context
-            datasource = _get_datasource(datasource_id, datasource_type)
-            if not datasource:
-                raise ValueError(f"Datasource {datasource_id} not found")
-
-            # Step 2: Execute query with RLS (Superset handles this automatically)
-            database: Database = datasource.database
-            rows_processed, file_size = _stream_to_s3(
-                database=database,
-                sql_query=sql_query,
-                job=job,
-                config=config,
-                session=session,
-            )
-
-            # Step 3: Generate pre-signed URL
-            download_url = _generate_presigned_url(
-                s3_key=job.s3_key,
-                config=config,
-                expiry_hours=config.get("EXPIRY_HOURS", 24),
-            )
-
-            # Step 4: Update job as completed
-            job.status = ExportStatus.COMPLETED
-            job.download_url = download_url
-            job.row_count = rows_processed
-            job.file_size = file_size
-            job.completed_at = datetime.now(timezone.utc)
-            job.expires_at = datetime.now(timezone.utc) + timedelta(
-                hours=config.get("EXPIRY_HOURS", 24)
-            )
-            session.commit()
-
-            # Step 5: Send email notification
             send_export_email(job, config)
+        except Exception as email_err:
+            logger.error(f"Failed to send error email: {email_err}")
 
-            logger.info(f"Export job {job_id} completed: {rows_processed} rows, {file_size} bytes")
+        # Re-raise for Celery retry
+        raise
 
-            return {
-                "status": "completed",
-                "job_id": str(job_id),
-                "row_count": rows_processed,
-                "file_size": file_size,
-            }
-
-        except Exception as e:
-            logger.exception(f"Export job {job_id} failed: {str(e)}")
-
-            # Update job as failed
-            job.status = ExportStatus.FAILED
-            job.error_message = str(e)[:5000]  # Truncate long errors
-            job.completed_at = datetime.now(timezone.utc)
-            session.commit()
-
-            # Send failure email
-            try:
-                send_export_email(job, config)
-            except Exception as email_err:
-                logger.error(f"Failed to send error email: {email_err}")
-
-            # Re-raise for Celery retry
-            raise
-
-        finally:
-            session.close()
+    finally:
+        session.close()  # type: ignore
 
 
 def _get_datasource(datasource_id: int, datasource_type: str):
@@ -160,7 +155,7 @@ def _stream_to_s3(
     sql_query: str,
     job: ExportJob,
     config: dict,
-    session: Session,
+    session: Union[Session, scoped_session],
     chunk_size: int = 10000,
 ) -> tuple[int, int]:
     """
@@ -182,7 +177,7 @@ def _stream_to_s3(
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     s3_key = f"exports/{job.user_id}/{timestamp}_{job.id}.csv"
     job.s3_key = s3_key
-    session.commit()
+    session.commit()  # type: ignore
 
     # Create multipart upload
     bucket = config["S3_BUCKET"]
