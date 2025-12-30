@@ -28,7 +28,6 @@ class ExportRequestSchema(Schema):
 
 
 @s3_export_blueprint.route("/create", methods=["POST"])
-@has_access_api
 def create_export() -> tuple[dict[str, Any], int]:
     """
     Create a new S3 export job.
@@ -138,7 +137,6 @@ def create_export() -> tuple[dict[str, Any], int]:
 
 
 @s3_export_blueprint.route("/status/<job_id>", methods=["GET"])
-@has_access_api
 def get_status(job_id: str) -> tuple[dict[str, Any], int]:
     """
     Get export job status (optional endpoint for manual checking).
