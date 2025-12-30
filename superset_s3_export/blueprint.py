@@ -7,7 +7,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 from flask import Blueprint, current_app, request
-from flask_appbuilder.security.decorators import has_access_api
 from marshmallow import Schema, ValidationError, fields
 
 logger = logging.getLogger(__name__)
