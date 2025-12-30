@@ -168,9 +168,9 @@ def _stream_to_s3(
     )
 
     # Generate S3 key
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    s3_key = f"exports/{job.user_id}/{timestamp}_{job.id}.csv"
-    job.s3_key = s3_key
+    date = datetime.now(timezone.utc).strftime("%Y%m%d")
+    fileid = str(job.id).replace("-", "")[:12]
+    s3_key = f"exports/{date}/{fileid}.csv"
     session.commit()  # type: ignore
 
     # Create multipart upload
