@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Union
 
 import boto3
+from botocore.config import Config
 from celery import Task
 from sqlalchemy.orm import Session, scoped_session
 from superset import db
@@ -308,6 +309,7 @@ def _generate_presigned_url(
         aws_access_key_id=config["AWS_ACCESS_KEY_ID"],
         aws_secret_access_key=config["AWS_SECRET_ACCESS_KEY"],
         region_name=config.get("S3_REGION", "us-east-1"),
+        config=Config(signature_version="s3v4"),
     )
 
     url = s3_client.generate_presigned_url(
