@@ -70,9 +70,6 @@ class ExportJob(db.Model):
     error_message = Column(Text, nullable=True)
     retry_count = Column(Integer, nullable=False, default=0)
 
-    # Relationships
-    user = relationship("User", foreign_keys=[user_id])
-
     def __repr__(self):
         return f"<ExportJob {self.id} ({self.status.value})>"
 
