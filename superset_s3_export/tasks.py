@@ -312,11 +312,15 @@ def _generate_presigned_url(
         config=Config(signature_version="s3v4"),
     )
 
+    filename = s3_key.split("/")[-1]
+
     url = s3_client.generate_presigned_url(
         "get_object",
         Params={
             "Bucket": config["S3_BUCKET"],
             "Key": s3_key,
+            "ResponseContentDisposition": f'attachment; filename="{filename}"',
+            "ResponseContentType": "text/csv",
         },
         ExpiresIn=expiry_hours * 3600,
     )
