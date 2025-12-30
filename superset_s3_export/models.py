@@ -40,7 +40,7 @@ class ExportJob(db.Model):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
 
     # User info (from Superset's ab_user table)
-    uuser_id = Column(Integer, nullable=False)
+    user_id = Column(Integer, nullable=False)
     user_email = Column(String(320), nullable=False)  # RFC 5321 max email length
 
     # Export metadata
