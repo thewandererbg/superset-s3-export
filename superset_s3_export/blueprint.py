@@ -9,13 +9,6 @@ from typing import Any, cast
 from flask import Blueprint, current_app, request
 from flask_appbuilder.security.decorators import has_access_api
 from marshmallow import Schema, ValidationError, fields
-from superset import db, security_manager
-from superset.connectors.sqla.models import SqlaTable
-from superset.exceptions import SupersetSecurityException
-from superset.utils.core import get_user_id
-
-from .models import ExportJob, ExportStatus
-from .tasks import process_export
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +50,14 @@ def create_export() -> tuple[dict[str, Any], int]:
         "message": "Export queued! You'll receive an email at user@example.com when ready."
     }
     """
+    # Lazy imports - import inside function to avoid circular dependency
+    from superset import db, security_manager
+    from superset.exceptions import SupersetSecurityException
+    from superset.utils.core import get_user_id
+
+    from .models import ExportJob, ExportStatus
+    from .tasks import process_export
+
     try:
         # Get current user
         user = security_manager.get_user_by_id(get_user_id())
@@ -114,8 +115,6 @@ def create_export() -> tuple[dict[str, Any], int]:
                 user.id,
                 config,
             ],
-            # Optional: add to specific queue
-            # queue='exports',
         )
 
         return {
@@ -155,6 +154,12 @@ def get_status(job_id: str) -> tuple[dict[str, Any], int]:
         "download_url": "https://..."  // only when completed
     }
     """
+    # Lazy imports
+    from superset import db, security_manager
+    from superset.utils.core import get_user_id
+
+    from .models import ExportJob
+
     try:
         # Get current user
         user = security_manager.get_user_by_id(get_user_id())
@@ -192,6 +197,10 @@ def _validate_datasource_access(
     Returns:
         Datasource object if access granted, None otherwise
     """
+    # Lazy imports
+    from superset import db, security_manager
+    from superset.connectors.sqla.models import SqlaTable
+
     try:
         if datasource_type == "table":
             datasource = db.session.query(SqlaTable).filter_by(id=datasource_id).first()  # type: ignore
@@ -217,7 +226,6 @@ def _validate_datasource_access(
         return None
 
 
-# Rate limiting (optional but recommended)
 def check_rate_limit(user_id: int, max_per_hour: int = 5) -> bool:
     """
     Check if user has exceeded rate limit.
@@ -229,6 +237,10 @@ def check_rate_limit(user_id: int, max_per_hour: int = 5) -> bool:
     Returns:
         bool: True if within limit, False otherwise
     """
+    # Lazy imports
+    from superset import db
+
+    from .models import ExportJob
 
     one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
 
@@ -242,13 +254,3 @@ def check_rate_limit(user_id: int, max_per_hour: int = 5) -> bool:
     )
 
     return count < max_per_hour
-
-
-# Optional: Add rate limiting to create_export
-# Add this at the start of create_export():
-#
-# if not check_rate_limit(user.id, max_per_hour=5):
-#     return {
-#         "error": "Rate limit exceeded",
-#         "message": "Maximum 5 exports per hour. Please try again later."
-#     }, 429
