@@ -8,114 +8,215 @@
     <style{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: Inter, Helvetica, Arial, sans-serif;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
             background: #fafafa;
+            color: #000;
         }
+
+        /* Top Navigation - matches Superset exactly */
         .top-nav {
-            background: #323232;
+            background: #fff;
+            border-bottom: 1px solid #d9d9d9;
             height: 60px;
+            padding: 0 24px;
             display: flex;
             align-items: center;
-            padding: 0 24px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            justify-content: space-between;
         }
-        .top-nav a {
-            color: #fff;
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .logo img {
+            height: 24px;
+        }
+
+        .main-nav {
+            display: flex;
+            list-style: none;
+            gap: 4px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-nav a {
+            color: rgba(0, 0, 0, 0.88);
             text-decoration: none;
             padding: 8px 16px;
-            margin-right: 8px;
-            border-radius: 4px;
+            display: block;
             font-size: 14px;
+            border-radius: 4px;
+            transition: all 0.2s;
         }
-        .top-nav a:hover { background: rgba(255,255,255,0.1); }
-        .top-nav a.active { background: rgba(255,255,255,0.15); }
-        .top-nav .logo {
-            font-weight: 600;
-            font-size: 18px;
-            margin-right: 32px;
+
+        .main-nav a:hover {
+            background: rgba(0, 0, 0, 0.04);
         }
+
+        .main-nav a.active {
+            color: #1890ff;
+            background: rgba(24, 144, 255, 0.1);
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Content Area */
         .container {
             max-width: 1200px;
             margin: 40px auto;
             padding: 0 24px;
         }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.88);
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: rgba(0, 0, 0, 0.45);
+            font-size: 14px;
+        }
+
         .card {
             background: #fff;
-            border-radius: 4px;
-            padding: 32px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px 0 rgba(0, 0, 0, 0.02);
         }
-        h2 { margin-bottom: 8px; font-size: 28px; color: #262626; }
-        .subtitle { color: #8c8c8c; margin-bottom: 32px; font-size: 14px; }
-        .form-group { margin-bottom: 24px; }
-        label {
+
+        /* Form Styles - matches Ant Design */
+        .form-item {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
             display: block;
             margin-bottom: 8px;
-            font-weight: 500;
-            color: #262626;
+            color: rgba(0, 0, 0, 0.88);
             font-size: 14px;
+            font-weight: 400;
         }
+
         .form-control {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d9d9d9;
-            border-radius: 4px;
+            padding: 4px 11px;
+            height: 32px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            line-height: 1.5715;
+            color: rgba(0, 0, 0, 0.88);
+            background: #fff;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            transition: all 0.2s;
         }
+
+        .form-control:hover {
+            border-color: #4096ff;
+        }
+
         .form-control:focus {
             outline: none;
-            border-color: #1890ff;
-            box-shadow: 0 0 0 2px rgba(24,144,255,0.1);
+            border-color: #4096ff;
+            box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1);
         }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
         .date-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 16px;
         }
+
+        .help-text {
+            display: block;
+            margin-top: 4px;
+            color: rgba(0, 0, 0, 0.45);
+            font-size: 14px;
+        }
+
+        /* Button - matches Ant Design primary button */
         .btn-primary {
             width: 100%;
-            padding: 12px;
-            background: #1890ff;
-            color: white;
-            border: none;
-            border-radius: 4px;
+            height: 32px;
+            padding: 4px 15px;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.5715;
+            border-radius: 6px;
+            background: #1677ff;
+            border: 1px solid #1677ff;
+            color: #fff;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: background 0.3s;
+            transition: all 0.2s;
         }
-        .btn-primary:hover { background: #40a9ff; }
-        .btn-primary:active { background: #096dd9; }
-        small { color: #8c8c8c; font-size: 13px; }
+
+        .btn-primary:hover {
+            background: #4096ff;
+            border-color: #4096ff;
+        }
+
+        .btn-primary:active {
+            background: #0958d9;
+            border-color: #0958d9;
+        }
     </style>
 </head>
 <body>
-    <nav class="top-nav">
-        <a href="/" class="logo">☰</a>
-        <a href="/s3exports/" class="active">Exports</a>
-        <a href="/dashboard/list/">Dashboards</a>
-        <a href="/chart/list/">Charts</a>
-        <a href="/tablemodelview/list/">Datasets</a>
-        <a href="/sqllab/">SQL</a>
-    </nav>
+    <!-- Top Navigation - matches Superset structure -->
+    <header class="top-nav" role="navigation">
+        <div class="nav-left">
+            <a href="/" class="logo">
+                <img src="/static/assets/images/superset-logo-horiz.png" alt="Apache Superset" height="24">
+            </a>
 
+            <ul class="main-nav" role="menu">
+                <li><a href="/s3exportview/list/" class="active">Exports</a></li>
+                <li><a href="/dashboard/list/">Dashboards</a></li>
+                <li><a href="/chart/list/">Charts</a></li>
+                <li><a href="/tablemodelview/list/">Datasets</a></li>
+                <li><a href="/sqllab/">SQL</a></li>
+            </ul>
+        </div>
+
+        <div class="nav-right">
+            <!-- Placeholder for Settings/User menu - keeps layout consistent -->
+        </div>
+    </header>
+
+    <!-- Main Content -->
     <div class="container">
-        <div class="card">
+        <div class="page-header">
             <h2>Export Large Datasets</h2>
-            <p class="subtitle">Select a dataset, apply filters, and receive a download link via email</p>
+            <p>Select a dataset, apply filters, and receive a download link via email</p>
+        </div>
 
-            <div class="form-group">
-                <label for="datasetSelect">Dataset</label>
+        <div class="card">
+            <div class="form-item">
+                <label class="form-label" for="datasetSelect">Dataset</label>
                 <select id="datasetSelect" class="form-control">
                     <option value="">Select a dataset...</option>
                 </select>
-                <small id="datasetDesc"></small>
+                <small id="datasetDesc" class="help-text"></small>
             </div>
 
             <div id="filtersContainer" style="display: none">
-                <div class="form-group">
-                    <label>Date Range</label>
+                <div class="form-item">
+                    <label class="form-label">Date Range</label>
                     <div class="date-row">
                         <div>
                             <input type="date" id="startDate" class="form-control" />
@@ -126,15 +227,15 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="regionSelect">Region</label>
+                <div class="form-item">
+                    <label class="form-label" for="regionSelect">Region</label>
                     <select id="regionSelect" class="form-control">
                         <option value="">Select region...</option>
                     </select>
                 </div>
 
-                <div class="form-group">
-                    <label for="emailInput">Your Email</label>
+                <div class="form-item">
+                    <label class="form-label" for="emailInput">Your Email</label>
                     <input type="email" id="emailInput" class="form-control" placeholder="your.email@example.com" />
                 </div>
 
