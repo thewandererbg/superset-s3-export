@@ -13,10 +13,10 @@ from flask_appbuilder import BaseView, expose
 class S3ExportView(BaseView):
     """Custom page for S3 exports"""
 
-    route_base = "/s3exports"
+    route_base = "/export"
     default_view = "list"
 
-    @expose("/")
+    @expose("/list")
     def list(self):
         """Show export form"""
         return render_template("s3_export_list.html")
@@ -69,7 +69,7 @@ class SupersetS3ExportPlugin:
         )
 
         app.logger.info(f"✓ {self.name} initialized")
-        app.logger.info("  UI: /s3exports/")
+        app.logger.info("  UI: /export/list")
         app.logger.info(f"  Templates: {template_folder}")
 
 
