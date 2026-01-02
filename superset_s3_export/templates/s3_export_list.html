@@ -1,69 +1,49 @@
-{% extends "superset/basic.html" %}
+{% extends "superset/spa.html" %}
 
 {% block title %}S3 Exports{% endblock %}
 
-{% block head_css %}
-{{ super() }}
-<style{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
-    .export-container {
-        max-width: 900px;
-        margin: 40px auto;
-        padding: 20px;
-    }
-    .export-form {
-        background: #f9f9f9;
-        padding: 30px;
-        border-radius: 4px;
-        margin-top: 20px;
-    }
-    .form-group {
-        margin-bottom: 20px;
-    }
-</style>
-{% endblock %}
+{% block body %}
+<div style="font-family: Inter, Helvetica, Arial, sans-serif; max-width: 1200px; margin: 40px auto; padding: 0 20px;">
+    <h2 style="margin-bottom: 8px; font-size: 24px;">Export Large Datasets to S3</h2>
+    <p style="color: #71717a; margin-bottom: 24px;">Select a dataset, apply filters, and receive a download link via email.</p>
 
-{% block content %}
-<div class="export-container">
-    <h2>Export Large Datasets to S3</h2>
-    <p class="text-muted">Select a dataset, apply filters, and receive a download link via email.</p>
-
-    <div class="export-form">
-        <div class="form-group">
-            <label for="datasetSelect">Dataset</label>
-            <select id="datasetSelect" class="form-control">
+    <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 4px; padding: 24px;">
+        <div style="margin-bottom: 20px;">
+            <label for="datasetSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">Dataset</label>
+            <select id="datasetSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;">
                 <option value="">-- Select a dataset --</option>
             </select>
-            <small id="datasetDesc" class="form-text text-muted"></small>
+            <small id="datasetDesc" style="color: #71717a; font-size: 13px; display: block; margin-top: 4px;"></small>
         </div>
 
         <div id="filtersContainer" style="display: none">
-            <div class="form-group">
-                <label>Date Range</label>
-                <div class="row">
-                    <div class="col-md-6">
-                        <label for="startDate">Start Date</label>
-                        <input type="date" id="startDate" class="form-control" />
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Date Range</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <label for="startDate" style="display: block; margin-bottom: 4px;">Start Date</label>
+                        <input type="date" id="startDate" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;" />
                     </div>
-                    <div class="col-md-6">
-                        <label for="endDate">End Date</label>
-                        <input type="date" id="endDate" class="form-control" />
+                    <div>
+                        <label for="endDate" style="display: block; margin-bottom: 4px;">End Date</label>
+                        <input type="date" id="endDate" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;" />
                     </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="regionSelect">Region</label>
-                <select id="regionSelect" class="form-control">
+            <div style="margin-bottom: 20px;">
+                <label for="regionSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">Region</label>
+                <select id="regionSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;">
                     <option value="">-- Select region --</option>
                 </select>
             </div>
 
-            <div class="form-group">
-                <label for="emailInput">Your Email</label>
-                <input type="email" id="emailInput" class="form-control" placeholder="your.email@example.com" />
+            <div style="margin-bottom: 20px;">
+                <label for="emailInput" style="display: block; margin-bottom: 8px; font-weight: 500;">Your Email</label>
+                <input type="email" id="emailInput" placeholder="your.email@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;" />
             </div>
 
-            <button type="button" id="exportBtn" class="btn btn-primary btn-lg btn-block">
+            <button type="button" id="exportBtn" style="width: 100%; padding: 10px 20px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
                 Export to S3
             </button>
         </div>
