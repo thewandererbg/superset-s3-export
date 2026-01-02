@@ -135,8 +135,20 @@ block head_css %} {{ super() }}
     async function loadDatasets() {
         try {
             const response = await fetch("/api/v1/s3-export/datasets");
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
-            datasets = data.datasets;
+
+            // Add null check
+            datasets = data.datasets || [];
+
+            if (datasets.length === 0) {
+                alert(
+                    "No export datasets configured. Please contact your administrator.",
+                );
+                return;
+            }
 
             const select = document.getElementById("datasetSelect");
             datasets.forEach((dataset) => {
@@ -147,7 +159,7 @@ block head_css %} {{ super() }}
             });
         } catch (error) {
             console.error("Failed to load datasets:", error);
-            alert("Failed to load export configurations");
+            alert("Failed to load export configurations: " + error.message);
         }
     }
 
