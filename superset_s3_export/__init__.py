@@ -4,10 +4,10 @@ Superset S3 Export Plugin
 
 __version__ = "0.1.0"
 
+import os
+
 from flask import Flask, render_template
 from flask_appbuilder import BaseView, expose
-
-# from flask_appbuilder.security.decorators import has_access_api
 
 
 class S3ExportView(BaseView):
@@ -17,9 +17,8 @@ class S3ExportView(BaseView):
     default_view = "list"
 
     @expose("/")
-    # @has_access_api  # CRITICAL: Required for FAB permissions
     def list(self):
-        """Show list of exports for current user"""
+        """Show export form"""
         return render_template("s3_export_list.html")
 
 
@@ -51,21 +50,27 @@ class SupersetS3ExportPlugin:
             app.logger.error(f"Missing config keys: {', '.join(missing_keys)}")
             return
 
+        # Register template folder (CRITICAL!)
+        template_folder = os.path.join(os.path.dirname(__file__), "templates")
+        if app.jinja_loader is not None:
+            app.jinja_loader.searchpath.append(template_folder)
+
         # Register API blueprint
         app.register_blueprint(s3_export_blueprint)
 
-        # Register view WITH menu (single call)
+        # Register view and menu
         from superset.extensions import appbuilder
 
         appbuilder.add_view(
             S3ExportView,
-            "Exports",  # Menu label
-            icon="fa-cloud-download",  # FontAwesome icon
-            category="",  # Empty = top level
+            "Exports",
+            icon="fa-cloud-download",
+            category="",
         )
 
         app.logger.info(f"✓ {self.name} initialized")
         app.logger.info("  UI: /s3exports/")
+        app.logger.info(f"  Templates: {template_folder}")
 
 
 __all__ = ["SupersetS3ExportPlugin"]
