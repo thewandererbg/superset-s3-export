@@ -19,13 +19,7 @@ class S3ExportView(BaseView):
     @expose("/")
     def list(self):
         """Show export form"""
-        return render_template(
-            "s3_export_list.html",
-            bootstrap_data="{}",
-            standalone_mode=False,
-            appbuilder=self.appbuilder,
-            assets_prefix="",
-        )
+        return render_template("s3_export_list.html")
 
 
 class SupersetS3ExportPlugin:

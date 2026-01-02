@@ -1,162 +1,255 @@
-{% extends "superset/spa.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exports - Superset</title>
+    <link rel="shortcut icon" href="/static/assets/images/favicon.png">
+    <style{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Inter, Helvetica, Arial, sans-serif;
+            background: #fafafa;
+        }
+        .top-nav {
+            background: #323232;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .top-nav a {
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 16px;
+            margin-right: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .top-nav a:hover { background: rgba(255,255,255,0.1); }
+        .top-nav a.active { background: rgba(255,255,255,0.15); }
+        .top-nav .logo {
+            font-weight: 600;
+            font-size: 18px;
+            margin-right: 32px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 24px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 4px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h2 { margin-bottom: 8px; font-size: 28px; color: #262626; }
+        .subtitle { color: #8c8c8c; margin-bottom: 32px; font-size: 14px; }
+        .form-group { margin-bottom: 24px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #262626;
+            font-size: 14px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24,144,255,0.1);
+        }
+        .date-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: #1890ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        .btn-primary:hover { background: #40a9ff; }
+        .btn-primary:active { background: #096dd9; }
+        small { color: #8c8c8c; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <a href="/" class="logo">☰</a>
+        <a href="/s3exports/" class="active">Exports</a>
+        <a href="/dashboard/list/">Dashboards</a>
+        <a href="/chart/list/">Charts</a>
+        <a href="/tablemodelview/list/">Datasets</a>
+        <a href="/sqllab/">SQL</a>
+    </nav>
 
-{% block title %}S3 Exports{% endblock %}
+    <div class="container">
+        <div class="card">
+            <h2>Export Large Datasets</h2>
+            <p class="subtitle">Select a dataset, apply filters, and receive a download link via email</p>
 
-{% block body %}
-<div style="font-family: Inter, Helvetica, Arial, sans-serif; max-width: 1200px; margin: 40px auto; padding: 0 20px;">
-    <h2 style="margin-bottom: 8px; font-size: 24px;">Export Large Datasets to S3</h2>
-    <p style="color: #71717a; margin-bottom: 24px;">Select a dataset, apply filters, and receive a download link via email.</p>
+            <div class="form-group">
+                <label for="datasetSelect">Dataset</label>
+                <select id="datasetSelect" class="form-control">
+                    <option value="">Select a dataset...</option>
+                </select>
+                <small id="datasetDesc"></small>
+            </div>
 
-    <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 4px; padding: 24px;">
-        <div style="margin-bottom: 20px;">
-            <label for="datasetSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">Dataset</label>
-            <select id="datasetSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;">
-                <option value="">-- Select a dataset --</option>
-            </select>
-            <small id="datasetDesc" style="color: #71717a; font-size: 13px; display: block; margin-top: 4px;"></small>
-        </div>
-
-        <div id="filtersContainer" style="display: none">
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Date Range</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                    <div>
-                        <label for="startDate" style="display: block; margin-bottom: 4px;">Start Date</label>
-                        <input type="date" id="startDate" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;" />
-                    </div>
-                    <div>
-                        <label for="endDate" style="display: block; margin-bottom: 4px;">End Date</label>
-                        <input type="date" id="endDate" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;" />
+            <div id="filtersContainer" style="display: none">
+                <div class="form-group">
+                    <label>Date Range</label>
+                    <div class="date-row">
+                        <div>
+                            <input type="date" id="startDate" class="form-control" />
+                        </div>
+                        <div>
+                            <input type="date" id="endDate" class="form-control" />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div style="margin-bottom: 20px;">
-                <label for="regionSelect" style="display: block; margin-bottom: 8px; font-weight: 500;">Region</label>
-                <select id="regionSelect" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;">
-                    <option value="">-- Select region --</option>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="regionSelect">Region</label>
+                    <select id="regionSelect" class="form-control">
+                        <option value="">Select region...</option>
+                    </select>
+                </div>
 
-            <div style="margin-bottom: 20px;">
-                <label for="emailInput" style="display: block; margin-bottom: 8px; font-weight: 500;">Your Email</label>
-                <input type="email" id="emailInput" placeholder="your.email@example.com" style="width: 100%; padding: 8px 12px; border: 1px solid #d4d4d8; border-radius: 4px;" />
-            </div>
+                <div class="form-group">
+                    <label for="emailInput">Your Email</label>
+                    <input type="email" id="emailInput" class="form-control" placeholder="your.email@example.com" />
+                </div>
 
-            <button type="button" id="exportBtn" style="width: 100%; padding: 10px 20px; background: #1890ff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">
-                Export to S3
-            </button>
+                <button type="button" id="exportBtn" class="btn-primary">
+                    Export to S3
+                </button>
+            </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block tail_js %}
-{{ super() }}
-<script{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
-(function() {
-    let datasets = [];
-    let currentDataset = null;
+    <script{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
+    (function() {
+        let datasets = [];
+        let currentDataset = null;
 
-    async function loadDatasets() {
-        try {
-            const response = await fetch("/api/v1/s3-export/datasets");
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        async function loadDatasets() {
+            try {
+                const response = await fetch("/api/v1/s3-export/datasets");
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-            const data = await response.json();
-            datasets = data.datasets || [];
+                const data = await response.json();
+                datasets = data.datasets || [];
 
-            if (datasets.length === 0) {
-                alert("No export datasets configured.");
+                if (datasets.length === 0) {
+                    alert("No export datasets configured.");
+                    return;
+                }
+
+                const select = document.getElementById("datasetSelect");
+                datasets.forEach((dataset) => {
+                    const option = document.createElement("option");
+                    option.value = dataset.id;
+                    option.textContent = dataset.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Failed to load datasets:", error);
+                alert("Failed to load: " + error.message);
+            }
+        }
+
+        function updateFilters() {
+            const datasetId = document.getElementById("datasetSelect").value;
+            const filtersContainer = document.getElementById("filtersContainer");
+            const descDiv = document.getElementById("datasetDesc");
+
+            if (!datasetId) {
+                filtersContainer.style.display = "none";
+                descDiv.textContent = "";
+                currentDataset = null;
                 return;
             }
 
-            const select = document.getElementById("datasetSelect");
-            datasets.forEach((dataset) => {
+            currentDataset = datasets.find((d) => d.id === datasetId);
+            if (!currentDataset) return;
+
+            descDiv.textContent = currentDataset.description || "";
+
+            const regionSelect = document.getElementById("regionSelect");
+            regionSelect.innerHTML = '<option value="">Select region...</option>';
+            currentDataset.filters.regions.forEach((region) => {
                 const option = document.createElement("option");
-                option.value = dataset.id;
-                option.textContent = dataset.name;
-                select.appendChild(option);
-            });
-        } catch (error) {
-            console.error("Failed to load datasets:", error);
-            alert("Failed to load: " + error.message);
-        }
-    }
-
-    function updateFilters() {
-        const datasetId = document.getElementById("datasetSelect").value;
-        const filtersContainer = document.getElementById("filtersContainer");
-        const descDiv = document.getElementById("datasetDesc");
-
-        if (!datasetId) {
-            filtersContainer.style.display = "none";
-            descDiv.textContent = "";
-            currentDataset = null;
-            return;
-        }
-
-        currentDataset = datasets.find((d) => d.id === datasetId);
-        if (!currentDataset) return;
-
-        descDiv.textContent = currentDataset.description || "";
-
-        const regionSelect = document.getElementById("regionSelect");
-        regionSelect.innerHTML = '<option value="">-- Select region --</option>';
-        currentDataset.filters.regions.forEach((region) => {
-            const option = document.createElement("option");
-            option.value = region;
-            option.textContent = region;
-            regionSelect.appendChild(option);
-        });
-
-        const today = new Date().toISOString().split("T")[0];
-        const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-        document.getElementById("endDate").value = today;
-        document.getElementById("startDate").value = lastMonth;
-
-        filtersContainer.style.display = "block";
-    }
-
-    async function submitExport() {
-        const email = document.getElementById("emailInput").value;
-        const startDate = document.getElementById("startDate").value;
-        const endDate = document.getElementById("endDate").value;
-        const region = document.getElementById("regionSelect").value;
-
-        if (!email || !startDate || !endDate || !region) {
-            alert("Please fill in all fields");
-            return;
-        }
-
-        try {
-            const response = await fetch("/api/v1/s3-export/create", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    dataset_id: currentDataset.id,
-                    filters: { start_date: startDate, end_date: endDate, region: region },
-                    email: email,
-                }),
+                option.value = region;
+                option.textContent = region;
+                regionSelect.appendChild(option);
             });
 
-            if (response.ok) {
-                alert("✓ Export started! Check your email shortly.");
-                document.getElementById("emailInput").value = "";
-            } else {
-                const error = await response.json();
-                alert("Failed: " + (error.message || "Unknown error"));
+            const today = new Date().toISOString().split("T")[0];
+            const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+            document.getElementById("endDate").value = today;
+            document.getElementById("startDate").value = lastMonth;
+
+            filtersContainer.style.display = "block";
+        }
+
+        async function submitExport() {
+            const email = document.getElementById("emailInput").value;
+            const startDate = document.getElementById("startDate").value;
+            const endDate = document.getElementById("endDate").value;
+            const region = document.getElementById("regionSelect").value;
+
+            if (!email || !startDate || !endDate || !region) {
+                alert("Please fill in all fields");
+                return;
             }
-        } catch (error) {
-            alert("Failed: " + error.message);
-        }
-    }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        loadDatasets();
-        document.getElementById('datasetSelect').addEventListener('change', updateFilters);
-        document.getElementById('exportBtn').addEventListener('click', submitExport);
-    });
-})();
-</script>
-{% endblock %}
+            try {
+                const response = await fetch("/api/v1/s3-export/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        dataset_id: currentDataset.id,
+                        filters: { start_date: startDate, end_date: endDate, region: region },
+                        email: email,
+                    }),
+                });
+
+                if (response.ok) {
+                    alert("✓ Export started! Check your email shortly.");
+                    document.getElementById("emailInput").value = "";
+                } else {
+                    const error = await response.json();
+                    alert("Failed: " + (error.message || "Unknown error"));
+                }
+            } catch (error) {
+                alert("Failed: " + error.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDatasets();
+            document.getElementById('datasetSelect').addEventListener('change', updateFilters);
+            document.getElementById('exportBtn').addEventListener('click', submitExport);
+        });
+    })();
+    </script>
+</body>
+</html>
