@@ -23,6 +23,8 @@ class S3ExportView(BaseView):
             "s3_export_list.html",
             bootstrap_data="{}",
             standalone_mode=False,
+            appbuilder=self.appbuilder,
+            assets_prefix="",
         )
 
 
