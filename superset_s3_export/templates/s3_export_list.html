@@ -1,63 +1,78 @@
-{% extends "appbuilder/base.html" %}
+{% extends "superset/basic.html" %}
+
+{% block title %}S3 Exports{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+<style{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
+    .export-container {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+    .export-form {
+        background: #f9f9f9;
+        padding: 30px;
+        border-radius: 4px;
+        margin-top: 20px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-8 col-md-offset-2">
-            <h2>Export Large Datasets to S3</h2>
-            <p class="text-muted">
-                Select a dataset, apply filters, and receive a download link via email.
-            </p>
+<div class="export-container">
+    <h2>Export Large Datasets to S3</h2>
+    <p class="text-muted">Select a dataset, apply filters, and receive a download link via email.</p>
 
-            <div class="panel panel-default" style="margin-top: 20px;">
-                <div class="panel-body">
-                    <form id="exportForm">
-                        <div class="form-group">
-                            <label for="datasetSelect">Dataset</label>
-                            <select id="datasetSelect" class="form-control">
-                                <option value="">-- Select a dataset --</option>
-                            </select>
-                            <small id="datasetDesc" class="form-text text-muted"></small>
-                        </div>
+    <div class="export-form">
+        <div class="form-group">
+            <label for="datasetSelect">Dataset</label>
+            <select id="datasetSelect" class="form-control">
+                <option value="">-- Select a dataset --</option>
+            </select>
+            <small id="datasetDesc" class="form-text text-muted"></small>
+        </div>
 
-                        <div id="filtersContainer" style="display: none">
-                            <div class="form-group">
-                                <label>Date Range</label>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <label for="startDate" class="control-label">Start Date</label>
-                                        <input type="date" id="startDate" class="form-control" />
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="endDate" class="control-label">End Date</label>
-                                        <input type="date" id="endDate" class="form-control" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="regionSelect">Region</label>
-                                <select id="regionSelect" class="form-control">
-                                    <option value="">-- Select region --</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="emailInput">Your Email</label>
-                                <input type="email" id="emailInput" class="form-control" placeholder="your.email@example.com" />
-                            </div>
-
-                            <button type="button" id="exportBtn" class="btn btn-primary btn-lg btn-block">
-                                <i class="fa fa-cloud-download"></i> Export to S3
-                            </button>
-                        </div>
-                    </form>
+        <div id="filtersContainer" style="display: none">
+            <div class="form-group">
+                <label>Date Range</label>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate" class="form-control" />
+                    </div>
                 </div>
             </div>
+
+            <div class="form-group">
+                <label for="regionSelect">Region</label>
+                <select id="regionSelect" class="form-control">
+                    <option value="">-- Select region --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="emailInput">Your Email</label>
+                <input type="email" id="emailInput" class="form-control" placeholder="your.email@example.com" />
+            </div>
+
+            <button type="button" id="exportBtn" class="btn btn-primary btn-lg btn-block">
+                Export to S3
+            </button>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block tail_js %}
+{{ super() }}
 <script{% if csp_nonce is defined %} nonce="{{ csp_nonce() }}"{% endif %}>
 (function() {
     let datasets = [];
@@ -85,7 +100,7 @@
             });
         } catch (error) {
             console.error("Failed to load datasets:", error);
-            alert("Failed to load configurations: " + error.message);
+            alert("Failed to load: " + error.message);
         }
     }
 
@@ -146,18 +161,17 @@
             });
 
             if (response.ok) {
-                alert("✓ Export started! You will receive an email shortly.");
+                alert("✓ Export started! Check your email shortly.");
                 document.getElementById("emailInput").value = "";
             } else {
                 const error = await response.json();
-                alert("Export failed: " + (error.message || "Unknown error"));
+                alert("Failed: " + (error.message || "Unknown error"));
             }
         } catch (error) {
-            alert("Export failed: " + error.message);
+            alert("Failed: " + error.message);
         }
     }
 
-    // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         loadDatasets();
         document.getElementById('datasetSelect').addEventListener('change', updateFilters);

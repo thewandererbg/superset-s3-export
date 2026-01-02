@@ -19,12 +19,7 @@ class S3ExportView(BaseView):
     @expose("/")
     def list(self):
         """Show export form"""
-        # Pass base_template for Flask-AppBuilder
-        return render_template(
-            "s3_export_list.html",
-            base_template=self.appbuilder.base_template,
-            appbuilder=self.appbuilder,
-        )
+        return render_template("s3_export_list.html")
 
 
 class SupersetS3ExportPlugin:
