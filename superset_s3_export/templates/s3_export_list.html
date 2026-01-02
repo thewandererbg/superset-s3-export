@@ -1,0 +1,248 @@
+{% extends "superset/basic.html" %} {% block title %}S3 Exports{% endblock %} {%
+block head_css %} {{ super() }}
+<style>
+    .s3-export-container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 20px;
+    }
+    .export-form {
+        background: #f9f9f9;
+        padding: 30px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .date-inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    .export-btn {
+        background: #1890ff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .export-btn:hover {
+        background: #40a9ff;
+    }
+    .export-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+    .dataset-desc {
+        color: #666;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %} {% block content %}
+<div class="s3-export-container">
+    <h1>Export Large Datasets to S3</h1>
+    <p>
+        Select a dataset, apply filters, and receive a download link via email.
+    </p>
+
+    <div class="export-form">
+        <div class="form-group">
+            <label for="datasetSelect">Dataset</label>
+            <select
+                id="datasetSelect"
+                class="form-control"
+                onchange="updateFilters()"
+            >
+                <option value="">-- Select a dataset --</option>
+            </select>
+            <div id="datasetDesc" class="dataset-desc"></div>
+        </div>
+
+        <div id="filtersContainer" style="display: none">
+            <div class="form-group">
+                <label>Date Range</label>
+                <div class="date-inputs">
+                    <div>
+                        <label
+                            for="startDate"
+                            style="font-weight: normal; font-size: 13px"
+                            >Start Date</label
+                        >
+                        <input
+                            type="date"
+                            id="startDate"
+                            class="form-control"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="endDate"
+                            style="font-weight: normal; font-size: 13px"
+                            >End Date</label
+                        >
+                        <input type="date" id="endDate" class="form-control" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="regionSelect">Region</label>
+                <select id="regionSelect" class="form-control">
+                    <option value="">-- Select region --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="emailInput">Your Email</label>
+                <input
+                    type="email"
+                    id="emailInput"
+                    class="form-control"
+                    placeholder="your.email@example.com"
+                />
+            </div>
+
+            <button class="export-btn" onclick="submitExport()">
+                Export to S3
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let datasets = [];
+    let currentDataset = null;
+
+    // Load available datasets from config
+    async function loadDatasets() {
+        try {
+            const response = await fetch("/api/v1/s3-export/datasets");
+            const data = await response.json();
+            datasets = data.datasets;
+
+            const select = document.getElementById("datasetSelect");
+            datasets.forEach((dataset) => {
+                const option = document.createElement("option");
+                option.value = dataset.id;
+                option.textContent = dataset.name;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error("Failed to load datasets:", error);
+            alert("Failed to load export configurations");
+        }
+    }
+
+    function updateFilters() {
+        const datasetId = document.getElementById("datasetSelect").value;
+        const filtersContainer = document.getElementById("filtersContainer");
+        const descDiv = document.getElementById("datasetDesc");
+
+        if (!datasetId) {
+            filtersContainer.style.display = "none";
+            descDiv.textContent = "";
+            currentDataset = null;
+            return;
+        }
+
+        currentDataset = datasets.find((d) => d.id === datasetId);
+        if (!currentDataset) return;
+
+        // Show description
+        descDiv.textContent = currentDataset.description || "";
+
+        // Populate region options
+        const regionSelect = document.getElementById("regionSelect");
+        regionSelect.innerHTML =
+            '<option value="">-- Select region --</option>';
+        currentDataset.filters.regions.forEach((region) => {
+            const option = document.createElement("option");
+            option.value = region;
+            option.textContent = region;
+            regionSelect.appendChild(option);
+        });
+
+        // Set default dates (last 30 days)
+        const today = new Date().toISOString().split("T")[0];
+        const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0];
+        document.getElementById("endDate").value = today;
+        document.getElementById("startDate").value = lastMonth;
+
+        filtersContainer.style.display = "block";
+    }
+
+    async function submitExport() {
+        const email = document.getElementById("emailInput").value;
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        const region = document.getElementById("regionSelect").value;
+
+        // Validation
+        if (!email) {
+            alert("Please enter your email");
+            return;
+        }
+        if (!startDate || !endDate) {
+            alert("Please select date range");
+            return;
+        }
+        if (!region) {
+            alert("Please select a region");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/v1/s3-export/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    dataset_id: currentDataset.id,
+                    filters: {
+                        start_date: startDate,
+                        end_date: endDate,
+                        region: region,
+                    },
+                    email: email,
+                }),
+            });
+
+            if (response.ok) {
+                alert(
+                    "✓ Export started! You will receive an email with the download link shortly.",
+                );
+                // Reset form
+                document.getElementById("emailInput").value = "";
+            } else {
+                const error = await response.json();
+                alert("Export failed: " + (error.message || "Unknown error"));
+            }
+        } catch (error) {
+            console.error("Export error:", error);
+            alert("Export failed: " + error.message);
+        }
+    }
+
+    // Load datasets on page load
+    loadDatasets();
+</script>
+{% endblock %}

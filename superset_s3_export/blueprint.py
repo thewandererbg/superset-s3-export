@@ -3,7 +3,6 @@ S3 Export API Blueprint
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 from flask import Blueprint, current_app, request
@@ -15,15 +14,12 @@ logger = logging.getLogger(__name__)
 s3_export_blueprint = Blueprint("s3_export", __name__, url_prefix="/api/v1/s3-export")
 
 
-class ExportRequestSchema(Schema):
-    """Schema for export request validation"""
+class DatasetExportRequestSchema(Schema):
+    """Schema for dataset-based export"""
 
-    datasource_id = fields.Int(required=True)
-    datasource_type = fields.Str(required=True, validate=lambda x: x in ["table", "query"])
-    sql_query = fields.Str(required=True)
-    dataset_name = fields.Str(required=True)
-    chart_id = fields.Int(required=False, allow_none=True)
-    dashboard_id = fields.Int(required=False, allow_none=True)
+    dataset_id = fields.Str(required=True)
+    filters = fields.Dict(required=True)
+    email = fields.Email(required=True)
 
 
 @s3_export_blueprint.route("/create", methods=["POST"])
@@ -31,24 +27,17 @@ def create_export() -> tuple[dict[str, Any], int]:
     """
     Create a new S3 export job.
 
-    Request body:
+    Request:
     {
-        "datasource_id": 123,
-        "datasource_type": "table",
-        "sql_query": "SELECT * FROM table WHERE ...",
-        "dataset_name": "Sales Report",
-        "chart_id": 456,  // optional
-        "dashboard_id": 789  // optional
-    }
-
-    Response:
-    {
-        "job_id": "abc-123-def",
-        "status": "pending",
-        "message": "Export queued! You'll receive an email at user@example.com when ready."
+        "dataset_id": "sales_data",
+        "filters": {
+            "start_date": "2024-01-01",
+            "end_date": "2024-12-31",
+            "region": "US"
+        },
+        "email": "user@example.com"
     }
     """
-    # Lazy imports - import inside function to avoid circular dependency
     from superset import db, security_manager
     from superset.exceptions import SupersetSecurityException
     from superset.utils.core import get_user_id
@@ -63,11 +52,37 @@ def create_export() -> tuple[dict[str, Any], int]:
             return {"error": "User not authenticated"}, 401
 
         # Validate request
-        schema = ExportRequestSchema()
         try:
+            schema = DatasetExportRequestSchema()
             data = cast(dict[str, Any], schema.load(request.json))
         except ValidationError as err:
             return {"error": "Invalid request", "details": err.messages}, 400
+
+        dataset_id = data["dataset_id"]
+        filters = data["filters"]
+        email = data["email"]
+
+        # Get dataset config
+        datasets = current_app.config.get("S3_EXPORT_DATASETS", [])
+        dataset_config = next((d for d in datasets if d["id"] == dataset_id), None)
+
+        if not dataset_config:
+            return {"error": "Dataset not found"}, 404
+
+        # Validate filters
+        if dataset_config["filters"].get("date_range"):
+            if not filters.get("start_date") or not filters.get("end_date"):
+                return {"error": "Date range required"}, 400
+
+        if dataset_config["filters"].get("regions"):
+            if filters.get("region") not in dataset_config["filters"]["regions"]:
+                return {"error": "Invalid region"}, 400
+
+        # Build SQL from template
+        try:
+            sql_query = dataset_config["sql_template"].format(**filters)
+        except KeyError as e:
+            return {"error": f"Missing filter parameter: {str(e)}"}, 400
 
         # Get S3 export config
         config = current_app.config.get("S3_EXPORT_CONFIG")
@@ -75,10 +90,10 @@ def create_export() -> tuple[dict[str, Any], int]:
             logger.error("S3_EXPORT_CONFIG not found in app config")
             return {"error": "S3 export not configured"}, 500
 
-        # Validate datasource access (RLS enforcement)
+        # Validate datasource access
         datasource = _validate_datasource_access(
-            datasource_id=data["datasource_id"],
-            datasource_type=data["datasource_type"],
+            datasource_id=dataset_config["datasource_id"],
+            datasource_type=dataset_config["datasource_type"],
             user=user,
         )
 
@@ -91,10 +106,8 @@ def create_export() -> tuple[dict[str, Any], int]:
         # Create export job
         job = ExportJob(
             user_id=user.id,
-            user_email=user.email,
-            dataset_name=data["dataset_name"],
-            chart_id=data.get("chart_id"),
-            dashboard_id=data.get("dashboard_id"),
+            user_email=email,
+            dataset_name=dataset_config["name"],
             status=ExportStatus.PENDING,
         )
 
@@ -107,9 +120,9 @@ def create_export() -> tuple[dict[str, Any], int]:
         process_export.apply_async(  # type: ignore
             args=[
                 str(job.id),
-                data["datasource_id"],
-                data["datasource_type"],
-                data["sql_query"],
+                dataset_config["datasource_id"],
+                dataset_config["datasource_type"],
+                sql_query,
                 user.id,
                 config,
             ],
@@ -118,9 +131,9 @@ def create_export() -> tuple[dict[str, Any], int]:
         return {
             "job_id": str(job.id),
             "status": job.status.value,
-            "message": f"Export queued! You'll receive an email at {user.email} when ready.",
+            "message": f"Export queued! You'll receive an email at {email} when ready.",
             "created_at": job.created_at.isoformat(),
-        }, 202  # 202 Accepted
+        }, 202
 
     except SupersetSecurityException as e:
         logger.warning(f"Security exception in export: {str(e)}")
@@ -137,43 +150,25 @@ def create_export() -> tuple[dict[str, Any], int]:
 
 @s3_export_blueprint.route("/status/<job_id>", methods=["GET"])
 def get_status(job_id: str) -> tuple[dict[str, Any], int]:
-    """
-    Get export job status (optional endpoint for manual checking).
-
-    Response:
-    {
-        "job_id": "abc-123-def",
-        "status": "processing",
-        "dataset_name": "Sales Report",
-        "row_count": 2500000,
-        "file_size": 125000000,
-        "created_at": "2025-01-01T10:00:00",
-        "download_url": "https://..."  // only when completed
-    }
-    """
-    # Lazy imports
+    """Get export job status"""
     from superset import db, security_manager
     from superset.utils.core import get_user_id
 
     from .models import ExportJob
 
     try:
-        # Get current user
         user = security_manager.get_user_by_id(get_user_id())
         if not user:
             return {"error": "User not authenticated"}, 401
 
-        # Get job
         job = db.session.query(ExportJob).filter_by(id=job_id).first()  # type: ignore
 
         if not job:
             return {"error": "Job not found"}, 404
 
-        # Check ownership
         if job.user_id != user.id:
             return {"error": "Access denied"}, 403
 
-        # Return job status
         return job.to_dict(), 200
 
     except Exception as e:
@@ -181,20 +176,33 @@ def get_status(job_id: str) -> tuple[dict[str, Any], int]:
         return {"error": "Failed to retrieve status", "message": str(e)}, 500
 
 
+@s3_export_blueprint.route("/datasets", methods=["GET"])
+def get_datasets():
+    """Get available export datasets from config"""
+    from flask import jsonify
+
+    datasets = current_app.config.get("S3_EXPORT_DATASETS", [])
+
+    # Return simplified view (no SQL templates for security)
+    public_datasets = [
+        {
+            "id": d["id"],
+            "name": d["name"],
+            "description": d.get("description", ""),
+            "filters": d["filters"],
+        }
+        for d in datasets
+    ]
+
+    return jsonify({"datasets": public_datasets})
+
+
 def _validate_datasource_access(
     datasource_id: int,
     datasource_type: str,
     user: Any,
 ) -> Any:
-    """
-    Validate user has access to datasource.
-
-    This enforces Superset's RBAC and RLS rules.
-
-    Returns:
-        Datasource object if access granted, None otherwise
-    """
-    # Lazy imports
+    """Validate user has access to datasource"""
     from superset import db, security_manager
     from superset.connectors.sqla.models import SqlaTable
 
@@ -206,8 +214,6 @@ def _validate_datasource_access(
                 logger.warning(f"Datasource {datasource_id} not found")
                 return None
 
-            # Check datasource permissions using Superset's security manager
-            # This automatically enforces RLS rules
             if not security_manager.can_access_datasource(datasource):
                 logger.warning(f"User {user.id} denied access to datasource {datasource_id}")
                 return None
@@ -215,39 +221,8 @@ def _validate_datasource_access(
             return datasource
 
         else:
-            # For saved queries, would need different handling
             raise NotImplementedError(f"Datasource type {datasource_type} not yet supported")
 
     except Exception as e:
         logger.exception(f"Error validating datasource access: {str(e)}")
         return None
-
-
-def check_rate_limit(user_id: int, max_per_hour: int = 5) -> bool:
-    """
-    Check if user has exceeded rate limit.
-
-    Args:
-        user_id: User ID
-        max_per_hour: Maximum exports per hour
-
-    Returns:
-        bool: True if within limit, False otherwise
-    """
-    # Lazy imports
-    from superset import db
-
-    from .models import ExportJob
-
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
-
-    count = (
-        db.session.query(ExportJob)  # type: ignore
-        .filter(
-            ExportJob.user_id == user_id,
-            ExportJob.created_at >= one_hour_ago,
-        )
-        .count()
-    )
-
-    return count < max_per_hour
