@@ -89,18 +89,13 @@
         <div class="s3-export-container">
             <h1>Export Large Datasets to S3</h1>
             <p class="subtitle">
-                Select a dataset, apply filters, and receive a download link via
-                email.
+                Select a dataset, apply filters, and receive a download link via email.
             </p>
 
             <div class="export-form">
                 <div class="form-group">
                     <label for="datasetSelect">Dataset</label>
-                    <select
-                        id="datasetSelect"
-                        class="form-control"
-                        onchange="updateFilters()"
-                    >
+                    <select id="datasetSelect" class="form-control">
                         <option value="">-- Select a dataset --</option>
                     </select>
                     <div id="datasetDesc" class="dataset-desc"></div>
@@ -111,28 +106,12 @@
                         <label>Date Range</label>
                         <div class="date-inputs">
                             <div>
-                                <label
-                                    for="startDate"
-                                    style="font-weight: normal; font-size: 13px"
-                                    >Start Date</label
-                                >
-                                <input
-                                    type="date"
-                                    id="startDate"
-                                    class="form-control"
-                                />
+                                <label for="startDate" style="font-weight: normal; font-size: 13px">Start Date</label>
+                                <input type="date" id="startDate" class="form-control" />
                             </div>
                             <div>
-                                <label
-                                    for="endDate"
-                                    style="font-weight: normal; font-size: 13px"
-                                    >End Date</label
-                                >
-                                <input
-                                    type="date"
-                                    id="endDate"
-                                    class="form-control"
-                                />
+                                <label for="endDate" style="font-weight: normal; font-size: 13px">End Date</label>
+                                <input type="date" id="endDate" class="form-control" />
                             </div>
                         </div>
                     </div>
@@ -146,17 +125,10 @@
 
                     <div class="form-group">
                         <label for="emailInput">Your Email</label>
-                        <input
-                            type="email"
-                            id="emailInput"
-                            class="form-control"
-                            placeholder="your.email@example.com"
-                        />
+                        <input type="email" id="emailInput" class="form-control" placeholder="your.email@example.com" />
                     </div>
 
-                    <button class="export-btn" onclick="submitExport()">
-                        Export to S3
-                    </button>
+                    <button id="exportBtn" class="export-btn">Export to S3</button>
                 </div>
             </div>
         </div>
@@ -175,9 +147,7 @@
                     datasets = data.datasets || [];
 
                     if (datasets.length === 0) {
-                        alert(
-                            "No export datasets configured. Please contact your administrator.",
-                        );
+                        alert("No export datasets configured.");
                         return;
                     }
 
@@ -190,18 +160,13 @@
                     });
                 } catch (error) {
                     console.error("Failed to load datasets:", error);
-                    alert(
-                        "Failed to load export configurations: " +
-                            error.message,
-                    );
+                    alert("Failed to load: " + error.message);
                 }
             }
 
             function updateFilters() {
-                const datasetId =
-                    document.getElementById("datasetSelect").value;
-                const filtersContainer =
-                    document.getElementById("filtersContainer");
+                const datasetId = document.getElementById("datasetSelect").value;
+                const filtersContainer = document.getElementById("filtersContainer");
                 const descDiv = document.getElementById("datasetDesc");
 
                 if (!datasetId) {
@@ -217,8 +182,7 @@
                 descDiv.textContent = currentDataset.description || "";
 
                 const regionSelect = document.getElementById("regionSelect");
-                regionSelect.innerHTML =
-                    '<option value="">-- Select region --</option>';
+                regionSelect.innerHTML = '<option value="">-- Select region --</option>';
                 currentDataset.filters.regions.forEach((region) => {
                     const option = document.createElement("option");
                     option.value = region;
@@ -227,11 +191,7 @@
                 });
 
                 const today = new Date().toISOString().split("T")[0];
-                const lastMonth = new Date(
-                    Date.now() - 30 * 24 * 60 * 60 * 1000,
-                )
-                    .toISOString()
-                    .split("T")[0];
+                const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
                 document.getElementById("endDate").value = today;
                 document.getElementById("startDate").value = lastMonth;
 
@@ -273,16 +233,11 @@
                     });
 
                     if (response.ok) {
-                        alert(
-                            "✓ Export started! You will receive an email with the download link shortly.",
-                        );
+                        alert("✓ Export started! You will receive an email shortly.");
                         document.getElementById("emailInput").value = "";
                     } else {
                         const error = await response.json();
-                        alert(
-                            "Export failed: " +
-                                (error.message || "Unknown error"),
-                        );
+                        alert("Export failed: " + (error.message || "Unknown error"));
                     }
                 } catch (error) {
                     console.error("Export error:", error);
@@ -290,7 +245,16 @@
                 }
             }
 
-            loadDatasets();
+            // Add event listeners (NO inline handlers!)
+            document.addEventListener('DOMContentLoaded', function() {
+                loadDatasets();
+
+                // Add change listener to dataset select
+                document.getElementById('datasetSelect').addEventListener('change', updateFilters);
+
+                // Add click listener to export button
+                document.getElementById('exportBtn').addEventListener('click', submitExport);
+            });
         </script>
     </body>
 </html>
