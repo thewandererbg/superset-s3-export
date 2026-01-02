@@ -19,11 +19,7 @@ class S3ExportView(BaseView):
     @expose("/")
     def list(self):
         """Show export form"""
-        from flask import g
-
-        # Get CSP nonce from Flask context
-        nonce = getattr(g, "csp_nonce", None)
-        return render_template("s3_export_list.html", nonce=nonce)
+        return render_template("s3_export_list.html")
 
 
 class SupersetS3ExportPlugin:
