@@ -13,7 +13,7 @@
             color: #000;
         }
 
-        /* Top Navigation - matches Superset exactly */
+        /* Top Navigation - matches Superset Ant Design layout exactly */
         .top-nav {
             background: #fff;
             border-bottom: 1px solid #d9d9d9;
@@ -21,13 +21,24 @@
             padding: 0 24px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+        }
+
+        .nav-row {
+            display: flex;
+            width: 100%;
+            align-items: center;
         }
 
         .nav-left {
             display: flex;
             align-items: center;
-            gap: 24px;
+            flex: 0 0 66.66667%;
+            max-width: 66.66667%;
+        }
+
+        .logo {
+            display: inline-flex;
+            margin-right: 16px;
         }
 
         .logo img {
@@ -35,35 +46,53 @@
         }
 
         .main-nav {
-            display: flex;
+            display: inline-flex;
             list-style: none;
-            gap: 4px;
             margin: 0;
             padding: 0;
+            align-items: center;
+        }
+
+        .main-nav li {
+            display: inline-flex;
+            align-items: center;
         }
 
         .main-nav a {
             color: rgba(0, 0, 0, 0.88);
             text-decoration: none;
-            padding: 8px 16px;
-            display: block;
+            padding: 5px 16px;
+            display: inline-block;
             font-size: 14px;
-            border-radius: 4px;
+            line-height: 1.5715;
             transition: all 0.2s;
+            position: relative;
         }
 
         .main-nav a:hover {
-            background: rgba(0, 0, 0, 0.04);
+            color: #1890ff;
         }
 
         .main-nav a.active {
             color: #1890ff;
-            background: rgba(24, 144, 255, 0.1);
+        }
+
+        .main-nav a.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: #1890ff;
         }
 
         .nav-right {
             display: flex;
-            gap: 8px;
+            align-items: center;
+            flex: 0 0 33.33333%;
+            max-width: 33.33333%;
+            justify-content: flex-end;
         }
 
         /* Content Area */
@@ -177,24 +206,26 @@
     </style>
 </head>
 <body>
-    <!-- Top Navigation - matches Superset structure -->
+    <!-- Top Navigation - matches Superset structure exactly -->
     <header class="top-nav" role="navigation">
-        <div class="nav-left">
-            <a href="/" class="logo">
-                <img src="/static/assets/images/superset-logo-horiz.png" alt="Apache Superset" height="24">
-            </a>
+        <div class="nav-row">
+            <div class="nav-left">
+                <a href="/" class="logo">
+                    <img src="/static/assets/images/superset-logo-horiz.png" alt="Apache Superset" height="24">
+                </a>
 
-            <ul class="main-nav" role="menu">
-                <li><a href="/s3exportview/list/" class="active">Exports</a></li>
-                <li><a href="/dashboard/list/">Dashboards</a></li>
-                <li><a href="/chart/list/">Charts</a></li>
-                <li><a href="/tablemodelview/list/">Datasets</a></li>
-                <li><a href="/sqllab/">SQL</a></li>
-            </ul>
-        </div>
+                <ul class="main-nav" role="menu">
+                    <li><a href="/s3exportview/list/" class="active">Exports</a></li>
+                    <li><a href="/dashboard/list/">Dashboards</a></li>
+                    <li><a href="/chart/list/">Charts</a></li>
+                    <li><a href="/tablemodelview/list/">Datasets</a></li>
+                    <li><a href="/sqllab/">SQL</a></li>
+                </ul>
+            </div>
 
-        <div class="nav-right">
-            <!-- Placeholder for Settings/User menu - keeps layout consistent -->
+            <div class="nav-right">
+                <!-- Placeholder for Settings/User menu - keeps layout consistent -->
+            </div>
         </div>
     </header>
 
